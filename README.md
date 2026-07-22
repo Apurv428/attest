@@ -136,6 +136,4 @@ should be built early rather than bolted on.
 **The wedge:** whoever makes AI employees provable gets deployed *inside* regulated
 enterprises instead of piloted next to them.
 
----
 
-Built by Apurv Sonawane · [github.com/Apurv428](https://github.com/Apurv428)
