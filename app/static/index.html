@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attest — audit ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#10192B;
+  --ink-soft:#48566B;
+  --paper:#EFF1F3;
+  --card:#FFFFFF;
+  --rule:#C9D2D8;
+  --rule-soft:#DFE5E9;
+  --seal:#1F5C3D;
+  --alarm:#A32B1C;
+  --amber:#8A6A1F;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --serif:"IBM Plex Serif",Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px 80px}
+
+/* ---- masthead ---- */
+.masthead{
+  border-bottom:2px solid var(--ink);
+  padding:26px 0 14px;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;
+}
+.brand h1{
+  font-family:var(--serif);font-weight:600;font-size:30px;letter-spacing:-.01em;margin:0;
+}
+.brand p{margin:4px 0 0;color:var(--ink-soft);max-width:52ch}
+.brand .sub{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px}
+
+/* ---- the seal: chain status ---- */
+.seal{
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  border:1.5px solid var(--seal);color:var(--seal);
+  padding:10px 14px;border-radius:2px;white-space:nowrap;
+  display:flex;flex-direction:column;gap:2px;align-items:flex-start;
+  background:rgba(31,92,61,.05);
+}
+.seal .big{font-size:15px;font-weight:600;letter-spacing:.06em}
+.seal.broken{border-color:var(--alarm);color:var(--alarm);background:rgba(163,43,28,.06)}
+
+/* ---- controls ---- */
+.controls{display:flex;gap:10px;flex-wrap:wrap;padding:18px 0;border-bottom:1px solid var(--rule-soft)}
+button{
+  font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--ink);color:var(--paper);border:1.5px solid var(--ink);
+  padding:10px 16px;border-radius:2px;cursor:pointer;transition:opacity .15s;
+}
+button:hover{opacity:.85}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+button.ghost{background:transparent;color:var(--ink)}
+button.danger{background:transparent;color:var(--alarm);border-color:var(--alarm)}
+button[disabled]{opacity:.35;cursor:not-allowed}
+.note{font-family:var(--mono);font-size:11px;color:var(--ink-soft);align-self:center;letter-spacing:.03em}
+
+/* ---- tallies ---- */
+.tallies{display:flex;gap:0;border-bottom:1px solid var(--rule-soft);margin-bottom:22px;flex-wrap:wrap}
+.tally{padding:16px 26px 16px 0;margin-right:26px;border-right:1px solid var(--rule-soft)}
+.tally:last-child{border-right:none}
+.tally .n{font-family:var(--mono);font-size:24px;font-weight:600}
+.tally .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.tally.flag .n{color:var(--amber)}
+
+/* ---- two column ---- */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:28px;align-items:start}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+h2.sec{
+  font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-soft);margin:0 0 10px;font-weight:500;
+}
+
+/* ---- queue ---- */
+.queue{border-top:1px solid var(--rule)}
+.row{
+  display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:baseline;
+  padding:11px 8px;border-bottom:1px solid var(--rule-soft);cursor:pointer;
+  background:transparent;width:100%;text-align:left;font-family:var(--sans);
+  color:var(--ink);text-transform:none;letter-spacing:normal;font-size:14px;border-radius:0;
+}
+.row:hover{background:rgba(16,25,43,.035);opacity:1}
+.row.on{background:rgba(16,25,43,.06);box-shadow:inset 3px 0 0 var(--ink)}
+.row .rid{font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.row .rv{font-weight:500}
+.row .rm{font-family:var(--mono);font-size:11px;color:var(--ink-soft);display:block;margin-top:2px}
+.row .amt{font-family:var(--mono);font-weight:500;white-space:nowrap}
+.pip{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.pip.rev{background:var(--amber)}
+.pip.ok{background:var(--seal)}
+.pip.done{background:var(--ink-soft)}
+
+/* ---- detail ---- */
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:22px}
+.panel .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
+.panel h3{font-family:var(--serif);font-size:21px;margin:6px 0 2px;font-weight:600}
+.meta{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-bottom:16px}
+.verdict{
+  border-left:3px solid var(--amber);padding:12px 0 12px 14px;margin:0 0 18px;
+  background:rgba(138,106,31,.05);
+}
+.verdict.ok{border-left-color:var(--seal);background:rgba(31,92,61,.05)}
+.verdict .vl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.verdict p{margin:5px 0 0}
+
+/* ---- checks ---- */
+.check{border-top:1px solid var(--rule-soft);padding:10px 0;display:grid;grid-template-columns:auto 1fr;gap:11px}
+.check .mark{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--seal);width:1.6em}
+.check.hit .mark{color:var(--alarm)}
+.check .cl{font-weight:500}
+.check.hit .cl{color:var(--alarm)}
+.check .cs{color:var(--ink-soft);font-size:13px}
+.check .sev{font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+.ev{font-family:var(--mono);font-size:11px;background:var(--paper);border:1px solid var(--rule-soft);
+    padding:7px 9px;margin-top:6px;border-radius:2px;color:var(--ink-soft);overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+
+.actions{display:flex;gap:9px;margin-top:20px;padding-top:18px;border-top:1px solid var(--rule);flex-wrap:wrap}
+.settled{font-family:var(--mono);font-size:12px;padding:10px 0;color:var(--ink-soft)}
+.settled b{color:var(--ink)}
+
+/* ---- the signature: chain spine ---- */
+.chainwrap{margin-top:40px;border-top:2px solid var(--ink);padding-top:20px}
+.chain{position:relative;padding-left:34px;margin-top:14px}
+.chain::before{
+  content:"";position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:var(--ink);
+}
+.link{position:relative;padding:9px 0 9px 4px;border-bottom:1px solid var(--rule-soft)}
+.link::before{
+  content:"";position:absolute;left:-29px;top:15px;width:10px;height:10px;border-radius:50%;
+  background:var(--paper);border:2px solid var(--ink);
+}
+.link.human::before{background:var(--ink)}
+.link.rupture::before{border-color:var(--alarm);background:var(--alarm)}
+.link.rupture{background:rgba(163,43,28,.06)}
+.link.rupture::after{
+  content:"CHAIN BROKEN HERE — recorded hash no longer matches recomputed hash";
+  display:block;font-family:var(--mono);font-size:11px;color:var(--alarm);
+  letter-spacing:.05em;margin-top:6px;font-weight:500;
+}
+.link .lh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.link .who{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.link .act{font-family:var(--mono);font-size:11px;color:var(--ink);font-weight:600;letter-spacing:.04em}
+.link .sm{margin:4px 0 0}
+.link .hash{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);margin-top:5px;word-break:break-all}
+.link .hash b{color:var(--ink);font-weight:500}
+
+.empty{color:var(--ink-soft);padding:26px 0;font-family:var(--mono);font-size:12px}
+.foot{margin-top:44px;padding-top:16px;border-top:1px solid var(--rule-soft);
+      font-family:var(--mono);font-size:11px;color:var(--ink-soft);line-height:1.7}
+@media(prefers-reduced-motion:no-preference){
+  .row,.link{transition:background .12s ease}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="brand">
+      <div class="sub">Attest · digital employee for expense review</div>
+      <h1>Every decision, provable.</h1>
+      <p>An AI employee reviews expense claims against seven checks, approves what is clean,
+         and hands anything doubtful to a person. Every step it takes is written to an
+         append-only, hash-chained ledger.</p>
+    </div>
+    <div id="seal" class="seal">
+      <span>Ledger</span><span class="big" id="sealText">NOT RUN</span>
+      <span id="sealSub">no events</span>
+    </div>
+  </header>
+
+  <div class="controls">
+    <button id="btnRun">Run the digital employee</button>
+    <button id="btnVerify" class="ghost">Verify ledger</button>
+    <button id="btnTamper" class="danger">Tamper with a decision</button>
+    <span class="note">All data is fabricated. No real people, vendors, or transactions.</span>
+  </div>
+
+  <div class="tallies" id="tallies" hidden>
+    <div class="tally"><div class="n" id="tProc">0</div><div class="l">Processed</div></div>
+    <div class="tally"><div class="n" id="tAuto">0</div><div class="l">Auto-approved</div></div>
+    <div class="tally flag"><div class="n" id="tRev">0</div><div class="l">Sent to a human</div></div>
+    <div class="tally"><div class="n" id="tPend">0</div><div class="l">Awaiting decision</div></div>
+  </div>
+
+  <div class="cols">
+    <section>
+      <h2 class="sec">Queue · flagged first</h2>
+      <div id="queue" class="queue"><div class="empty">Run the digital employee to populate the queue.</div></div>
+    </section>
+    <section>
+      <h2 class="sec">Claim detail</h2>
+      <div id="detail" class="panel"><div class="empty">Select a claim.</div></div>
+    </section>
+  </div>
+
+  <section class="chainwrap">
+    <h2 class="sec">Audit ledger · append-only, hash-chained</h2>
+    <div id="chain" class="chain"><div class="empty">No events yet.</div></div>
+  </section>
+
+  <div class="foot">
+    Attest · synthetic data throughout · the agent may approve, only a person may reject<br>
+    Each ledger entry hashes its own contents together with the previous entry's hash.
+    Editing any settled record breaks every link after it.
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let selected = null;
+
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  if(!r.ok) throw new Error((await r.json()).detail || r.statusText);
+  return r.json();
+}
+const money = n => "$" + n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function paintSeal(chain){
+  const seal = $("#seal");
+  if(!chain || chain.events === 0){
+    seal.className = "seal"; $("#sealText").textContent = "NOT RUN"; $("#sealSub").textContent = "no events"; return;
+  }
+  if(chain.intact){
+    seal.className = "seal";
+    $("#sealText").textContent = "INTACT";
+    $("#sealSub").textContent = chain.events + " entries verified";
+  } else {
+    seal.className = "seal broken";
+    $("#sealText").textContent = "BROKEN";
+    $("#sealSub").textContent = "first break at entry #" + chain.first_break;
+  }
+}
+
+async function loadQueue(){
+  const d = await api("/api/queue");
+  paintSeal(d.chain);
+  $("#tallies").hidden = false;
+  $("#tProc").textContent = d.items.length;
+  $("#tAuto").textContent = d.items.filter(i=>i.route==="auto_approved").length;
+  $("#tRev").textContent = d.items.filter(i=>i.route==="review").length;
+  $("#tPend").textContent = d.pending;
+
+  const q = $("#queue");
+  if(!d.items.length){ q.innerHTML = '<div class="empty">Nothing processed yet.</div>'; return; }
+  q.innerHTML = "";
+  d.items.forEach(i => {
+    const b = document.createElement("button");
+    b.className = "row" + (selected === i.id ? " on" : "");
+    const cls = i.review ? "done" : (i.route === "review" ? "rev" : "ok");
+    const state = i.review ? i.review.action : (i.route === "review" ? "needs a person" : "auto-approved");
+    b.innerHTML = `<span class="rid">${esc(i.id)}</span>
+      <span><span class="rv"><span class="pip ${cls}"></span>${esc(i.vendor)}</span>
+        <span class="rm">${esc(i.employee)} · ${esc(i.category)} · ${state}${i.triggered.length? " · "+i.triggered.length+" signal(s)":""}</span></span>
+      <span class="amt">${money(i.amount)}</span>`;
+    b.onclick = () => showDetail(i.id);
+    q.appendChild(b);
+  });
+}
+
+async function showDetail(id){
+  selected = id;
+  const p = await api("/api/expense/" + id);
+  const d = p.decision, e = p.expense, rev = p.human_review;
+  const hits = p.checks.filter(c=>c.triggered);
+
+  let html = `<div class="eyebrow">${esc(e.id)} · submitted ${esc(e.submitted_at.slice(0,10))}</div>
+    <h3>${esc(e.vendor)} — ${money(e.amount)}</h3>
+    <div class="meta">${esc(e.employee)} · ${esc(e.category)} · incurred ${esc(e.date)} · receipt ${esc(e.receipt_id)}</div>
+    <div class="verdict ${d.route==="auto_approved"?"ok":""}">
+      <div class="vl">${d.route==="auto_approved"?"Agent auto-approved":"Agent escalated"} · risk ${d.risk.toFixed(2)} · ${hits.length} of ${p.checks.length} checks triggered</div>
+      <p>${esc(d.rationale)}</p>
+    </div>`;
+
+  p.checks.forEach(c => {
+    html += `<div class="check ${c.triggered?"hit":""}">
+      <div class="mark">${c.triggered?"!":"✓"}</div>
+      <div><div class="cl">${esc(c.label)} ${c.triggered?`<span class="sev">· severity ${c.severity.toFixed(2)}</span>`:""}</div>
+      <div class="cs">${esc(c.summary)}</div>
+      ${c.triggered && Object.keys(c.evidence).length ? `<div class="ev">${esc(JSON.stringify(c.evidence,null,1))}</div>`:""}
+      </div></div>`;
+  });
+
+  if(rev){
+    html += `<div class="settled">Settled by <b>${esc(rev.reviewer)}</b> — <b>${esc(rev.action)}</b> on ${esc(rev.reviewed_at.slice(0,16).replace("T"," "))}${rev.note?` · “${esc(rev.note)}”`:""}</div>`;
+  } else if(d.route === "review"){
+    html += `<div class="actions">
+      <button onclick="decide('${e.id}','approved')">Approve claim</button>
+      <button class="ghost" onclick="decide('${e.id}','rejected')">Reject claim</button>
+      <button class="ghost" onclick="window.open('/api/packet/${e.id}')">Download audit packet</button>
+    </div>`;
+  } else {
+    html += `<div class="actions"><button class="ghost" onclick="window.open('/api/packet/${e.id}')">Download audit packet</button></div>`;
+  }
+  $("#detail").innerHTML = html;
+  await loadQueue();
+  await loadChain(id);
+}
+
+window.decide = async (id, action) => {
+  const note = action === "rejected" ? "Not a reimbursable business expense." : "Verified with the employee.";
+  await api(`/api/expense/${id}/review`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({action, reviewer:"finance.reviewer", note})
+  });
+  await showDetail(id);
+};
+
+async function loadChain(expenseId){
+  const url = expenseId ? "/api/audit?expense_id=" + expenseId : "/api/audit?limit=60";
+  const d = await api(url);
+  paintSeal(d.chain);
+  const c = $("#chain");
+  if(!d.events.length){ c.innerHTML = '<div class="empty">No events yet.</div>'; return; }
+  const evs = expenseId ? d.events : d.events.slice().reverse();
+  c.innerHTML = evs.map(ev => {
+    const human = ev.actor !== "attest.agent/v1";
+    const broke = !d.chain.intact && ev.seq === d.chain.first_break;
+    return `<div class="link ${human?"human":""} ${broke?"rupture":""}">
+      <div class="lh"><span class="who">#${ev.seq} · ${esc(ev.actor)}</span><span class="act">${esc(ev.action)}</span></div>
+      <p class="sm">${esc(ev.summary)}</p>
+      <div class="hash">prev ${esc(ev.prev_hash)} → <b>${esc(ev.hash)}</b></div>
+    </div>`;
+  }).join("");
+}
+
+$("#btnRun").onclick = async (e) => {
+  e.target.disabled = true; e.target.textContent = "Running…";
+  selected = null;
+  try{ await api("/api/run",{method:"POST"}); await loadQueue(); await loadChain(null);
+       $("#detail").innerHTML = '<div class="empty">Select a claim from the queue.</div>'; }
+  finally{ e.target.disabled = false; e.target.textContent = "Run the digital employee"; }
+};
+$("#btnVerify").onclick = async () => { const c = await api("/api/verify"); paintSeal(c);
+  if(c.intact) alert(`Ledger verified.\n\n${c.events} entries re-hashed from genesis. Every link matches.`);
+  else alert(`Ledger BROKEN.\n\nFirst mismatch at entry #${c.first_break}. Every entry after it is unverifiable.`); };
+$("#btnTamper").onclick = async () => {
+  const r = await api("/api/tamper",{method:"POST"});
+  // Focus the claim we just rewrote so the broken link is on screen, not
+  // buried a hundred entries down the global ledger.
+  await showDetail(r.tampered_expense);
+  document.querySelector(".chainwrap").scrollIntoView({behavior:"smooth", block:"start"});
+  alert(`Silently rewrote the decision on ${r.tampered_expense}.\n\nThe record now reads "no issues found" and looks perfectly normal on its own.\n\nThe ledger disagrees: break at entry #${r.chain.first_break}.`);
+};
+
+loadQueue().then(()=>loadChain(null)).catch(()=>{});
+</script>
+</body>
+</html>
